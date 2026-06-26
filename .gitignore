@@ -1,0 +1,10 @@
+.idea/
+venv/
+.venv/
+__pycache__/
+data/
+outputs/
+experiments/
+*.csv
+*.pth
+*.pt
