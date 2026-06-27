@@ -8,3 +8,4 @@ experiments/
 *.csv
 *.pth
 *.pt
+.DS_Store
