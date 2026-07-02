@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import transforms
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import resnet34, ResNet34_Weights
 from tqdm import tqdm
 
 # Добавляем корень проекта в sys.path
@@ -28,7 +28,7 @@ class IndexedDataset(Dataset):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract ImageNet embeddings using ResNet-18")
+    parser = argparse.ArgumentParser(description="Extract ImageNet embeddings using ResNet-34")
     parser.add_argument('--smoke_test', action='store_true', help='Process only the first 200 samples')
     parser.add_argument('--batch_size', type=int, default=256, help='Batch size for extraction')
     args = parser.parse_args()
@@ -59,11 +59,11 @@ def main():
 
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
-    print("Инициализация предобученного ResNet-18 (ImageNet)...")
+    print("Инициализация предобученного ResNet-34 (ImageNet)...")
     # Загружаем модель с весами ImageNet
-    model = resnet18(weights=ResNet18_Weights.DEFAULT)
+    model = resnet34(weights=ResNet34_Weights.DEFAULT)
 
-    # Замораживаем все веса
+    # Замораживаем все веса бэкбона
     for param in model.parameters():
         param.requires_grad = False
 

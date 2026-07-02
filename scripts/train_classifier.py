@@ -43,27 +43,25 @@ def calculate_margin(logits, target_labels):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train ResNet-18 and log trajectories")
-    parser.add_argument('--smoke_test', action='store_true', help='Run 1 epoch on 200 samples on CPU')
+    parser = argparse.ArgumentParser(description="Train ResNet-34 and log trajectories")
+    parser.add_argument('--smoke_test', action='store_true', help='Run 1 epoch on 200 samples on CPU/MPS')
     parser.add_argument('--epochs', type=int, default=10, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
     parser.add_argument('--lr', type=float, default=0.1, help='Learning rate')
     args = parser.parse_args()
 
-    # Настройки для smoke_test
+    # Определение устройства (с приоритетом для Apple Silicon)
     if args.smoke_test:
-        print("ВНИМАНИЕ: Запуск в режиме smoke_test (1 эпоха, 200 примеров, CPU).")
+        print("ВНИМАНИЕ: Запуск в режиме smoke_test (1 эпоха, 200 примеров).")
         args.epochs = 1
         args.batch_size = 32
-        device = torch.device('cpu')
+
+    if torch.backends.mps.is_available():
+        device = torch.device('mps')
+    elif torch.cuda.is_available():
+        device = torch.device('cuda')
     else:
-        # Добавлена поддержка Apple Metal (MPS)
-        if torch.backends.mps.is_available():
-            device = torch.device('mps')
-        elif torch.cuda.is_available():
-            device = torch.device('cuda')
-        else:
-            device = torch.device('cpu')
+        device = torch.device('cpu')
 
     print(f"Используемое устройство: {device}")
 
@@ -79,10 +77,11 @@ def main():
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-    # Загрузка данных (добавляем флаг download=True)
+    # Загрузка данных (флаг download=True добавлен для надежности)
     base_train_dataset = CIFAR10N(root='./data', noise_type='aggregate', train=True, transform=transform_train,
                                   download=True)
     test_dataset = CIFAR10N(root='./data', noise_type='aggregate', train=False, transform=transform_test, download=True)
+
     train_dataset = IndexedDataset(base_train_dataset)
 
     if args.smoke_test:
@@ -92,8 +91,9 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=0)
 
-    # Инициализация модели ResNet-18 (меняем последний слой на 10 классов)
-    model = models.resnet18(weights=None)
+    print("Инициализация модели ResNet-34...")
+    # Обучаем с нуля (без весов ImageNet) на зашумленных данных
+    model = models.resnet34(weights=None)
     model.fc = nn.Linear(model.fc.in_features, 10)
     model = model.to(device)
 
@@ -119,7 +119,7 @@ def main():
             optimizer.zero_grad()
             logits = model(inputs)
 
-            # Loss вычисляется только по шумным меткам! Чистые метки (_) игнорируются.
+            # Loss вычисляется только по шумным меткам! Чистые метки игнорируются.
             per_sample_loss = criterion_none(logits, noisy_labels)
             loss = per_sample_loss.mean()
             loss.backward()
